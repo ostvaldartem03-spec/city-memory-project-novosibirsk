@@ -1,0 +1,10 @@
+[
+  {
+    "id": "novosibirsk",
+    "name": "Новосибирск",
+    "wikidata_qid": "Q883",
+    "center": [55.0302, 82.9204],
+    "bbox": [54.78, 82.65, 55.20, 83.18],
+    "data_file": "data/novosibirsk_streets.json"
+  }
+]

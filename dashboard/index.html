@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Город как текст: цифровой анализ названий улиц как формы исторической памяти</title>
+    <meta name="description" content="Интерактивный цифровой анализ названий улиц Новосибирска как формы городской исторической памяти: гендерный, профессиональный и хронологический срез топонимики.">
+    
+    <!-- Шрифты -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+    
+    <!-- Стили карты -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    
+    <!-- Иконки -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Стили приложения -->
+    <link rel="stylesheet" href="style.css?v=egg-2026-06-17">
+</head>
+<body>
+
+    <!-- Индикатор загрузки -->
+    <div class="loading-indicator" id="loading-indicator">
+        <div class="loading-spinner"></div>
+        <span>Загружаем данные...</span>
+    </div>
+
+    <div class="app-container">
+        
+        <!-- Шапка -->
+        <header class="app-header">
+            <div class="header-logo">
+                <img class="header-coat" src="assets/coat_of_arms.png" alt="Герб Новосибирска">
+                <div class="header-titles">
+                    <h1>Город как текст</h1>
+                    <p class="subtitle">Анализ городской топонимики как формы исторической памяти</p>
+                </div>
+            </div>
+            
+        </header>
+
+        <!-- Основная область -->
+        <main class="app-main">
+            
+            <!-- Левая панель аналитики -->
+            <section class="analytics-sidebar">
+                
+                <!-- Сводка по городу -->
+                <div class="glass-card summary-card">
+                    <h2 id="city-title">Новосибирск</h2>
+                    <p id="city-description" class="city-desc">Топонимическая память города в открытых данных.</p>
+                    <div class="stat-group">
+                        <div class="stat-item">
+                            <span class="stat-number" id="stat-total-streets">0</span>
+                            <span class="stat-label">Всего улиц</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-number" id="stat-named-streets">0</span>
+                            <span class="stat-label">В честь личности</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-number" id="stat-female-percent">0%</span>
+                            <span class="stat-label">Женских имен</span>
+                        </div>
+                    </div>
+                    <p class="stat-note" id="stat-note"></p>
+                </div>
+
+                <!-- Фильтры -->
+                <div class="glass-card filters-card">
+                    <h3><i class="fa-solid fa-sliders"></i> Фильтры памяти</h3>
+                    <div class="filters-grid">
+                        <label class="filter-control" for="filter-gender">
+                            <span>Пол</span>
+                            <select id="filter-gender" onchange="handleFilterChange()">
+                                <option value="all">Все</option>
+                            </select>
+                        </label>
+                        <label class="filter-control" for="filter-occupation">
+                            <span>Сфера</span>
+                            <select id="filter-occupation" onchange="handleFilterChange()">
+                                <option value="all">Все</option>
+                            </select>
+                        </label>
+                        <label class="filter-control" for="filter-epoch">
+                            <span>Эпоха</span>
+                            <select id="filter-epoch" onchange="handleFilterChange()">
+                                <option value="all">Все</option>
+                            </select>
+                        </label>
+                    </div>
+                    <div class="filter-footer">
+                        <p id="filter-status" class="filter-status">Показаны все именные улицы</p>
+                        <button class="filter-reset-btn" type="button" onclick="resetFilters()">Сбросить</button>
+                    </div>
+                </div>
+
+                <!-- Гендерный график -->
+                <div class="glass-card chart-card">
+                    <h3><i class="fa-solid fa-venus-mars"></i> Гендерный баланс</h3>
+                    <div class="chart-container">
+                        <canvas id="genderChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- График сфер памяти -->
+                <div class="glass-card chart-card">
+                    <h3><i class="fa-solid fa-briefcase"></i> Сферы памяти</h3>
+                    <div class="chart-container-large">
+                        <canvas id="occupationChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- График эпох -->
+                <div class="glass-card chart-card">
+                    <h3><i class="fa-solid fa-timeline"></i> Эпохи</h3>
+                    <div class="chart-container">
+                        <canvas id="epochChart"></canvas>
+                    </div>
+                </div>
+
+            </section>
+
+            <!-- Центральная панель карты и сети -->
+            <section class="map-network-panel">
+                
+                <!-- Вкладки и поиск -->
+                <div class="workspace-header">
+                    <div class="view-tabs">
+                        <button id="tab-map" class="tab-btn active" onclick="switchTab('map')">
+                            <i class="fa-solid fa-map-location-dot"></i> Карта памяти
+                        </button>
+                        <button id="tab-network" class="tab-btn" onclick="switchTab('network')">
+                            <i class="fa-solid fa-circle-nodes"></i> Сеть персоналий
+                        </button>
+                        <button id="tab-gallery" class="tab-btn" onclick="switchTab('gallery')">
+                            <i class="fa-solid fa-images"></i> Стена памяти
+                        </button>
+                    </div>
+                    
+                    <div class="search-box">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <input type="text" id="street-search" placeholder="Поиск улицы или персоны..." oninput="handleSearch()">
+                        <div id="search-suggestions" class="suggestions-dropdown"></div>
+                    </div>
+                </div>
+
+                <!-- Интерактивная карта -->
+                <div id="map-view" class="view-container active">
+                    <div id="map-element"></div>
+                    <div class="map-overlay-controls">
+                        <div class="map-style-switcher" aria-label="Стиль карты">
+                            <button id="map-style-memory" class="map-style-btn active" type="button" onclick="switchMapStyle('memory')">Память</button>
+                            <button id="map-style-bright" class="map-style-btn" type="button" onclick="switchMapStyle('bright')">Светлая</button>
+                            <button id="map-style-soft" class="map-style-btn" type="button" onclick="switchMapStyle('soft')">Мягкая</button>
+                        </div>
+                        <div class="map-legend">
+                            <span class="legend-item"><span class="legend-dot" style="background:hsl(38,90%,55%)"></span>Литература</span>
+                            <span class="legend-item"><span class="legend-dot" style="background:hsl(355,75%,50%)"></span>Военное дело</span>
+                            <span class="legend-item"><span class="legend-dot" style="background:hsl(270,70%,60%)"></span>Политика</span>
+                            <span class="legend-item"><span class="legend-dot" style="background:hsl(180,75%,45%)"></span>Наука</span>
+                            <span class="legend-item"><span class="legend-dot" style="background:hsl(300,70%,55%)"></span>Искусство</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Сеть персоналий -->
+                <div id="network-view" class="view-container">
+                    <div class="network-legend">
+                        <span class="legend-item"><span class="legend-dot color-center"></span>Город</span>
+                        <span class="legend-item"><span class="legend-dot color-occupation"></span>Сфера деятельности</span>
+                        <span class="legend-item"><span class="legend-dot color-epoch"></span>Эпоха</span>
+                        <span class="legend-item"><span class="legend-dot color-person"></span>Персона (цвет обводки = сфера, заливка = пол)</span>
+                        <span class="legend-item" id="network-stats"></span>
+                    </div>
+                    <div id="network-element"></div>
+                    <div id="network-loader" class="network-loader"><div class="net-spinner"></div><span>Собираем сеть памяти…</span></div>
+                </div>
+
+                <!-- Стена памяти -->
+                <div id="gallery-view" class="view-container">
+                    <div class="gallery-header">
+                        <h3><i class="fa-solid fa-images"></i> Стена памяти <span id="gallery-count"></span></h3>
+                        <div class="gallery-search">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                            <input type="text" id="gallery-search-input" placeholder="Поиск персоны..." oninput="handleGallerySearch()" aria-label="Поиск персоны в стене памяти">
+                            <button type="button" id="gallery-search-clear" class="gallery-search-clear hidden" onclick="clearGallerySearch()" aria-label="Очистить поиск">&times;</button>
+                        </div>
+                        <span class="gallery-hint">Клик – крупный портрет. Фото кешируются в браузере и доступны офлайн.</span>
+                    </div>
+                    <div class="portrait-grid" id="gallery-grid"></div>
+                </div>
+
+            </section>
+
+            <!-- Правая панель деталей -->
+            <section class="details-sidebar">
+                <div class="glass-card detail-card" id="detail-panel">
+                    <div class="detail-placeholder" id="detail-placeholder">
+                        <i class="fa-solid fa-landmark"></i>
+                        <h4>Выберите улицу или персоналию</h4>
+                        <p>Кликните по маркеру на карте, узлу сети или воспользуйтесь поиском, чтобы изучить подробную историческую справку.</p>
+                    </div>
+                    
+                    <div class="detail-content hidden" id="detail-content">
+                        <div class="detail-portrait hidden" id="detail-portrait" aria-hidden="true">
+                            <div class="detail-portrait-img" id="detail-portrait-img">
+                                <span class="detail-portrait-initials" id="detail-portrait-initials"></span>
+                            </div>
+                        </div>
+                        <div class="detail-header">
+                            <span class="category-badge" id="detail-badge">Литература</span>
+                            <h2 id="detail-street-name">Улица Льва Толстого</h2>
+                            <button type="button" id="detail-show-on-map" class="detail-show-map-btn hidden" onclick="focusOnMapForDetail()">
+                                <i class="fa-solid fa-map-location-dot"></i>
+                                <span>Показать на карте</span>
+                            </button>
+                        </div>
+                        
+                        <div class="detail-body">
+                            <div class="street-annotation-card">
+                                <div class="annotation-icon" id="detail-marker-icon">
+                                    <i class="fa-solid fa-circle"></i>
+                                </div>
+                                <div>
+                                    <span class="annotation-kicker" id="detail-street-type">Тип улицы</span>
+                                    <h4 id="detail-memory-type">Тип памяти</h4>
+                                    <p id="detail-annotation">Семантическое обозначение улицы.</p>
+                                </div>
+                            </div>
+
+                            <div class="person-bio-card">
+                                <div class="bio-row">
+                                    <span class="bio-label">Имя:</span>
+                                    <span class="bio-value font-highlight" id="detail-person-name">Лев Толстой</span>
+                                </div>
+                                <div class="bio-row">
+                                    <span class="bio-label">Годы жизни:</span>
+                                    <span class="bio-value" id="detail-person-years">1828 – 1910 гг.</span>
+                                </div>
+                                <div class="bio-row">
+                                    <span class="bio-label">Пол:</span>
+                                    <span class="bio-value" id="detail-person-gender">Мужской</span>
+                                </div>
+                                <div class="bio-row">
+                                    <span class="bio-label">Сфера памяти:</span>
+                                    <span class="bio-value" id="detail-person-occupations">писатель, драматург, философ</span>
+                                </div>
+                                <div class="bio-row">
+                                    <span class="bio-label">Историческая эпоха:</span>
+                                    <span class="bio-value" id="detail-person-epoch">XIX – начал�� XX века</span>
+                                </div>
+                            </div>
+
+                            <div class="dh-analysis">
+                                <h5><i class="fa-solid fa-feather-pointed"></i> Анализ исторической памяти</h5>
+                                <p id="detail-dh-notes">Название улицы отражает канонизацию великого русского писателя в советской и российской топонимической культуре. Улицы в честь Л. Толстого присутствуют в большинстве городов бывшего СССР.</p>
+                            </div>
+                            
+                            <div class="external-links">
+                                <div id="detail-extra-links" class="extra-external-links"></div>
+                                <a href="#" target="_blank" rel="noopener noreferrer" class="wikidata-link" id="detail-wikidata-url">
+                                    <i class="fa-solid fa-database"></i> Wikidata
+                                </a>
+                                <a href="#" target="_blank" rel="noopener noreferrer" class="wikidata-link" id="detail-wikipedia-url">
+                                    <i class="fa-brands fa-wikipedia-w"></i> Wikipedia
+                                </a>
+                                <a href="#" target="_blank" rel="noopener noreferrer" class="wikidata-link" id="detail-source-url">
+                                    <i class="fa-solid fa-link"></i> Источник названия
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+
+        <!-- Подвал -->
+        <footer class="app-footer">
+            <p>Цифровой гуманитарный проект • Открытые картографические и энциклопедические данные</p>
+        </footer>
+
+    </div>
+
+    <!-- Лайтбокс портрета -->
+    <div class="portrait-lightbox" id="portrait-lightbox" onclick="if(event.target===this)closePortraitLightbox()">
+        <div class="lightbox-card">
+            <button class="lightbox-close" type="button" onclick="closePortraitLightbox()" aria-label="Закрыть">&times;</button>
+            <div class="lightbox-photo" id="lightbox-image"></div>
+            <div class="lightbox-info">
+                <h2 id="lightbox-name">Имя</h2>
+                <span class="lightbox-sub" id="lightbox-sub"></span>
+                <div class="lightbox-bio" id="lightbox-bio"></div>
+                <a href="#" target="_blank" rel="noopener noreferrer" class="wikidata-link lightbox-source" id="lightbox-source"><i class="fa-brands fa-wikipedia-w"></i> Открыть источник</a>
+                <span class="lightbox-photo-note" id="lightbox-photo-note"></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Скрипт карты -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    
+    <!-- Скрипт графиков -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" crossorigin="anonymous"></script>
+    
+    <!-- Скрипт сетевого графа -->
+    <script src="https://unpkg.com/vis-network@9.1.9/standalone/umd/vis-network.min.js" crossorigin="anonymous"></script>
+    
+    <!-- Логика приложения -->
+    <script src="app.js?v=egg-2026-06-17"></script>
+</body>
+</html>
