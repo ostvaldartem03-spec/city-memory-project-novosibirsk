@@ -145,6 +145,7 @@ city-memory-project/
 ├── LICENSE                 – лицензия MIT (на исходный код)
 ├── requirements.txt        – Python-зависимости
 ├── .gitignore
+├── osm_collector.py - по сути, парсер OVERPASS API
 ├── data_collector.ipynb    – ноутбук №1: сбор данных (OSM + Wikidata)
 ├── analysis/
 │   ├── analysis.ipynb          – ноутбук №2: анализ и визуализации
